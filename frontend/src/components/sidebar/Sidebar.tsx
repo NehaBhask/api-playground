@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const mockCollections = [
   {
@@ -28,11 +29,20 @@ const methodColors: Record<string, string> = {
 
 function Sidebar() {
   const [expanded, setExpanded] = useState<string[]>(['1'])
+  const navigate = useNavigate()
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const isLoggedIn = !!localStorage.getItem('token')
 
   const toggleCollection = (id: string) => {
     setExpanded(prev =>
       prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]
     )
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    navigate('/login')
   }
 
   return (
@@ -57,7 +67,6 @@ function Sidebar() {
 
         {mockCollections.map(collection => (
           <div key={collection.id} className="mb-1">
-            {/* Collection Header */}
             <button
               onClick={() => toggleCollection(collection.id)}
               className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-800 text-left"
@@ -70,7 +79,6 @@ function Sidebar() {
               </span>
             </button>
 
-            {/* Requests */}
             {expanded.includes(collection.id) && (
               <div className="ml-4">
                 {collection.requests.map(req => (
@@ -90,11 +98,28 @@ function Sidebar() {
         ))}
       </div>
 
-      {/* Bottom - Login */}
+      {/* Bottom - User */}
       <div className="p-3 border-t border-gray-800">
-        <button className="w-full text-gray-400 hover:text-white text-sm py-2 px-3 rounded-lg hover:bg-gray-800">
-          Login / Sign Up
-        </button>
+        {isLoggedIn ? (
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400 text-sm truncate">
+              👤 {user.name || 'User'}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-gray-800"
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate('/login')}
+            className="w-full text-gray-400 hover:text-white text-sm py-2 px-3 rounded-lg hover:bg-gray-800"
+          >
+            Login / Sign Up
+          </button>
+        )}
       </div>
     </div>
   )
