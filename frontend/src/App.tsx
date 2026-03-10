@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
+import ImportPage from './pages/ImportPage'
+import StatsPage from './pages/StatsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token')
@@ -13,9 +15,15 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/import/:shareId" element={<ImportPage />} />
         <Route path="/" element={
           <ProtectedRoute>
             <Layout />
+          </ProtectedRoute>
+        } />
+        <Route path="/stats" element={
+          <ProtectedRoute>
+            <StatsPage />
           </ProtectedRoute>
         } />
       </Routes>

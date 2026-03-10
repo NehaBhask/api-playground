@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import client from '../../api/client'
 import { useRequestStore } from '../../store/requestStore'
+import ShareModal from './ShareModal'
 
 interface SavedRequest {
   _id: string
@@ -44,6 +45,7 @@ const methodColors: Record<string, string> = {
 }
 
 function Sidebar() {
+  const [shareCollection, setShareCollection] = useState<any>(null)
   const [expanded, setExpanded] = useState<string[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   const [uncategorized, setUncategorized] = useState<SavedRequest[]>([])
@@ -250,6 +252,14 @@ function Sidebar() {
                       {collection.requests.length}
                     </span>
                   </button>
+                  {/* Share button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShareCollection(collection) }}
+                    className="opacity-0 group-hover/col:opacity-100 text-blue-400 hover:text-blue-300 px-1 py-2 text-xs transition-opacity"
+                    title="Share collection"
+                  >
+                    🔗
+                  </button>
 
                   {/* Delete collection button - shows on hover */}
                   <button
@@ -397,9 +407,17 @@ function Sidebar() {
           </button>
         )}
       </div>
-
+     {shareCollection && (
+  <ShareModal
+    collection={shareCollection}
+    onClose={() => setShareCollection(null)}
+    onUpdate={fetchCollections}
+    />
+    )}
     </div>
+    
   )
 }
+
 
 export default Sidebar

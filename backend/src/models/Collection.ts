@@ -7,6 +7,8 @@ const collectionSchema = new mongoose.Schema({
     required: true
   },
   name: { type: String, required: true },
+  isShared: { type: Boolean, default: false },
+  shareId: { type: String, default: null }, // unique share token
   createdAt: { type: Date, default: Date.now }
 })
 
