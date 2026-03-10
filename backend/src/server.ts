@@ -5,6 +5,7 @@ import connectDB from './db'
 import authRoutes from './routes/auth'
 import collectionRoutes from './routes/collections'
 import requestRoutes from './routes/requests'
+import historyRoutes from './routes/history'
 
 dotenv.config()
 connectDB()
@@ -18,6 +19,7 @@ app.use(express.json())
 app.use('/api/auth', authRoutes)
 app.use('/api/collections', collectionRoutes)
 app.use('/api/requests', requestRoutes)
+app.use('/api/history', historyRoutes)
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'API Playground backend running!' })

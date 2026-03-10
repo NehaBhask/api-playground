@@ -13,20 +13,18 @@ interface Response {
 }
 
 interface RequestStore {
-  // Request state
   method: string
   url: string
   headers: Header[]
   params: Param[]
   body: string
   activeTab: string
-
-  // Response state
   response: Response | null
   loading: boolean
   error: string | null
+  savedRequestId: string | null
+  requestName: string
 
-  // Actions
   setMethod: (method: string) => void
   setUrl: (url: string) => void
   setHeaders: (headers: Header[]) => void
@@ -36,6 +34,8 @@ interface RequestStore {
   setResponse: (response: Response | null) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
+  setSavedRequestId: (id: string | null) => void
+  setRequestName: (name: string) => void
 }
 
 export const useRequestStore = create<RequestStore>((set) => ({
@@ -51,6 +51,8 @@ export const useRequestStore = create<RequestStore>((set) => ({
   response: null,
   loading: false,
   error: null,
+  savedRequestId: null,
+  requestName: 'Untitled Request',
 
   setMethod: (method) => set({ method }),
   setUrl: (url) => set({ url }),
@@ -61,4 +63,6 @@ export const useRequestStore = create<RequestStore>((set) => ({
   setResponse: (response) => set({ response }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
+  setSavedRequestId: (id) => set({ savedRequestId: id }),
+  setRequestName: (name) => set({ requestName: name }),
 }))

@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useRequestStore } from '../../store/requestStore'
 import { sendRequest } from '../../api/sendRequest'
+import SaveModal from './SaveModal'
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
@@ -20,32 +22,78 @@ function RequestPanel() {
     setResponse, setLoading, setError, loading
   } = useRequestStore()
 
-  const handleSend = async () => {
-    if (!url.trim()) return
-    setLoading(true)
-    setError(null)
-    setResponse(null)
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [collections, setCollections] = useState<{ _id: string; name: string }[]>([])
 
+  const handleSend = async () => {
+  if (!url.trim()) return
+  setLoading(true)
+  setError(null)
+  setResponse(null)
+
+  try {
+    const result = await sendRequest({ method, url, headers, params, body })
+    setResponse(result)
+
+    // Save to history
+    const clientModule = await import('../../api/client')
+    await clientModule.default.post('/api/history', {
+      method,
+      url,
+      status: result.status,
+      statusText: result.statusText,
+      responseTime: result.time,
+      size: result.size,
+      headers,
+      params,
+      body
+    }).catch(() => {}) // silent fail — don't block UI if history save fails
+
+    // Notify sidebar to refresh history
+    window.dispatchEvent(new Event('historySaved'))
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    if (err.response) {
+      setResponse({
+        status: err.response.status,
+        statusText: err.response.statusText,
+        data: err.response.data,
+        time: 0,
+        size: '0 B',
+        headers: err.response.headers,
+      })
+
+      // Save failed request to history too
+      const clientModule = await import('../../api/client')
+      await clientModule.default.post('/api/history', {
+        method,
+        url,
+        status: err.response.status,
+        statusText: err.response.statusText,
+        responseTime: 0,
+        size: '0 B',
+        headers,
+        params,
+        body
+      }).catch(() => {})
+
+      window.dispatchEvent(new Event('historySaved'))
+    } else {
+      setError(err.message || 'Request failed')
+    }
+  } finally {
+    setLoading(false)
+  }
+}
+
+  const loadCollections = async () => {
     try {
-      const result = await sendRequest({ method, url, headers, params, body })
-      setResponse(result)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      if (err.response) {
-        // Server responded with error status
-        setResponse({
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data,
-          time: 0,
-          size: '0 B',
-          headers: err.response.headers,
-        })
-      } else {
-        setError(err.message || 'Request failed')
-      }
-    } finally {
-      setLoading(false)
+      const clientModule = await import('../../api/client')
+      const res = await clientModule.default.get('/api/collections')
+      setCollections(res.data.collections)
+    } catch (err) {
+      console.error('Failed to load collections:', err)
     }
   }
 
@@ -84,7 +132,13 @@ function RequestPanel() {
           {loading ? '...' : 'Send'}
         </button>
 
-        <button className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+        <button
+          onClick={async () => {
+            await loadCollections()
+            setShowSaveModal(true)
+          }}
+          className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+        >
           Save
         </button>
       </div>
@@ -109,6 +163,7 @@ function RequestPanel() {
       {/* Tab Content */}
       <div className="p-3 max-h-48 overflow-y-auto">
 
+        {/* Params Tab */}
         {activeTab === 'Params' && (
           <div>
             <div className="grid grid-cols-12 gap-2 mb-2 text-xs text-gray-500 px-1">
@@ -119,7 +174,9 @@ function RequestPanel() {
             {params.map((param, i) => (
               <div key={i} className="grid grid-cols-12 gap-2 mb-2 items-center">
                 <div className="col-span-1">
-                  <input type="checkbox" checked={param.enabled}
+                  <input
+                    type="checkbox"
+                    checked={param.enabled}
                     onChange={(e) => {
                       const updated = [...params]
                       updated[i].enabled = e.target.checked
@@ -128,7 +185,8 @@ function RequestPanel() {
                     className="accent-blue-500"
                   />
                 </div>
-                <input value={param.key}
+                <input
+                  value={param.key}
                   onChange={(e) => {
                     const updated = [...params]
                     updated[i].key = e.target.value
@@ -137,7 +195,8 @@ function RequestPanel() {
                   placeholder="Key"
                   className="col-span-5 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
                 />
-                <input value={param.value}
+                <input
+                  value={param.value}
                   onChange={(e) => {
                     const updated = [...params]
                     updated[i].value = e.target.value
@@ -148,12 +207,16 @@ function RequestPanel() {
                 />
               </div>
             ))}
-            <button onClick={addParam} className="text-xs text-blue-400 hover:text-blue-300 mt-1">
+            <button
+              onClick={addParam}
+              className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+            >
               + Add Parameter
             </button>
           </div>
         )}
 
+        {/* Headers Tab */}
         {activeTab === 'Headers' && (
           <div>
             <div className="grid grid-cols-12 gap-2 mb-2 text-xs text-gray-500 px-1">
@@ -164,7 +227,9 @@ function RequestPanel() {
             {headers.map((header, i) => (
               <div key={i} className="grid grid-cols-12 gap-2 mb-2 items-center">
                 <div className="col-span-1">
-                  <input type="checkbox" checked={header.enabled}
+                  <input
+                    type="checkbox"
+                    checked={header.enabled}
                     onChange={(e) => {
                       const updated = [...headers]
                       updated[i].enabled = e.target.checked
@@ -173,7 +238,8 @@ function RequestPanel() {
                     className="accent-blue-500"
                   />
                 </div>
-                <input value={header.key}
+                <input
+                  value={header.key}
                   onChange={(e) => {
                     const updated = [...headers]
                     updated[i].key = e.target.value
@@ -182,7 +248,8 @@ function RequestPanel() {
                   placeholder="Key"
                   className="col-span-5 bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"
                 />
-                <input value={header.value}
+                <input
+                  value={header.value}
                   onChange={(e) => {
                     const updated = [...headers]
                     updated[i].value = e.target.value
@@ -193,12 +260,16 @@ function RequestPanel() {
                 />
               </div>
             ))}
-            <button onClick={addHeader} className="text-xs text-blue-400 hover:text-blue-300 mt-1">
+            <button
+              onClick={addHeader}
+              className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+            >
               + Add Header
             </button>
           </div>
         )}
 
+        {/* Body Tab */}
         {activeTab === 'Body' && (
           <textarea
             value={body}
@@ -209,6 +280,16 @@ function RequestPanel() {
         )}
 
       </div>
+
+      {/* Save Modal */}
+      {showSaveModal && (
+        <SaveModal
+          onClose={() => setShowSaveModal(false)}
+          onSaved={() => window.dispatchEvent(new Event('requestSaved'))}
+          collections={collections}
+        />
+      )}
+
     </div>
   )
 }
