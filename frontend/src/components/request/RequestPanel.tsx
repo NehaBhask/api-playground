@@ -3,6 +3,7 @@ import { useRequestStore } from '../../store/requestStore'
 import { sendRequest } from '../../api/sendRequest'
 import SaveModal from './SaveModal'
 
+
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
 const methodColors: Record<string, string> = {
@@ -21,6 +22,7 @@ function RequestPanel() {
     setMethod, setUrl, setHeaders, setParams, setBody, setActiveTab,
     setResponse, setLoading, setError, loading
   } = useRequestStore()
+  const { activeEnvironment } = useRequestStore()
 
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [collections, setCollections] = useState<{ _id: string; name: string }[]>([])
@@ -32,7 +34,7 @@ function RequestPanel() {
   setResponse(null)
 
   try {
-    const result = await sendRequest({ method, url, headers, params, body })
+    const result = await sendRequest({ method, url, headers, params, body, environment: activeEnvironment?.variables || [] })
     setResponse(result)
 
     // Save to history

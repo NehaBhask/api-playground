@@ -2,6 +2,13 @@ import { create } from 'zustand'
 
 interface Header { key: string; value: string; enabled: boolean }
 interface Param { key: string; value: string; enabled: boolean }
+interface EnvVariable { key: string; value: string; enabled: boolean }
+
+interface Environment {
+  _id: string
+  name: string
+  variables: EnvVariable[]
+}
 
 interface Response {
   status: number
@@ -24,6 +31,7 @@ interface RequestStore {
   error: string | null
   savedRequestId: string | null
   requestName: string
+  activeEnvironment: Environment | null
 
   setMethod: (method: string) => void
   setUrl: (url: string) => void
@@ -36,6 +44,7 @@ interface RequestStore {
   setError: (error: string | null) => void
   setSavedRequestId: (id: string | null) => void
   setRequestName: (name: string) => void
+  setActiveEnvironment: (env: Environment | null) => void
 }
 
 export const useRequestStore = create<RequestStore>((set) => ({
@@ -53,6 +62,7 @@ export const useRequestStore = create<RequestStore>((set) => ({
   error: null,
   savedRequestId: null,
   requestName: 'Untitled Request',
+  activeEnvironment: null,
 
   setMethod: (method) => set({ method }),
   setUrl: (url) => set({ url }),
@@ -65,4 +75,5 @@ export const useRequestStore = create<RequestStore>((set) => ({
   setError: (error) => set({ error }),
   setSavedRequestId: (id) => set({ savedRequestId: id }),
   setRequestName: (name) => set({ requestName: name }),
+  setActiveEnvironment: (env) => set({ activeEnvironment: env }),
 }))
