@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
-ENV VITE_API_URL=https://api-playground-backend.onrender.com
+ENV VITE_API_URL=https://api-playground-backend-nphu.onrender.com
 RUN npm run build
 
 # Production stage
