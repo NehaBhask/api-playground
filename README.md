@@ -2,15 +2,17 @@
 
 A cloud-based API testing tool that lets developers send HTTP requests, save collections, track history, and collaborate via shareable links — all from the browser, no installation needed.
 
-> Built as a cloud-based alternative to Postman with full cloud sync, Docker containerization, environment variables, and a stats dashboard.
+> Built as a cloud-based alternative to Postman with microservices architecture, Docker containerization, environment variables, and a stats dashboard.
 
-![Status](https://img.shields.io/badge/Status-Live-brightgreen) ![React](https://img.shields.io/badge/React-18-blue) ![Node.js](https://img.shields.io/badge/Node.js-20-green) ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green) ![Docker](https://img.shields.io/badge/Docker-Containerized-blue)
+![Status](https://img.shields.io/badge/Status-Live-brightgreen) ![React](https://img.shields.io/badge/React-18-blue) ![Node.js](https://img.shields.io/badge/Node.js-20-green) ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green) ![Docker](https://img.shields.io/badge/Docker-Containerized-blue) ![Microservices](https://img.shields.io/badge/Architecture-Microservices-orange)
 
 ---
 
 ## 🌐 Live Demo
 
-https://api-playground-frontend.onrender.com
+| Service | URL |
+|---|---|
+| Frontend | https://api-playground-frontend.onrender.com |
 
 ---
 
@@ -30,6 +32,8 @@ https://api-playground-frontend.onrender.com
 
 ## 🏗️ Architecture
 
+### High Level
+
 ```
 ┌─────────────────────────────────────────────────┐
 │                   USER BROWSER                   │
@@ -39,42 +43,62 @@ https://api-playground-frontend.onrender.com
 └─────────────────────┬───────────────────────────┘
                       │ HTTPS REST API
 ┌─────────────────────▼───────────────────────────┐
-│                 BACKEND SERVER                   │
-│           Node.js + Express + TypeScript         │
-│           Running inside Docker Container        │
-│              Deployed on Render                  │
-└─────────────────────┬───────────────────────────┘
-                      │ Mongoose ODM
-┌─────────────────────▼───────────────────────────┐
-│               MONGODB ATLAS                      │
-│         Cloud Database (AWS ap-south-1)          │
-│   Users │ Requests │ Collections │ History       │
-│         Environments │ Share Tokens              │
-└─────────────────────────────────────────────────┘
+│              API GATEWAY (nginx)                 │
+│         Single entry point — port 3000           │
+│         Routes requests to microservices         │
+└──────┬──────────┬────────────┬───────────────────┘
+       │          │            │            │
+       ▼          ▼            ▼            ▼
+  auth-service  collection  history   environment
+    :3001        :3002       :3003       :3004
+       │          │            │            │
+       └──────────┴────────────┴────────────┘
+                         │
+              ┌──────────▼──────────┐
+              │    MongoDB Atlas    │
+              │  Cloud Database     │
+              │  (AWS ap-south-1)   │
+              └─────────────────────┘
 ```
 
----
-
-## 🐳 Docker Architecture
+### Microservices Architecture
 
 ```
 docker-compose up
        ↓
-┌──────────────────────────────────────┐
-│         app-network (bridge)         │
-│                                      │
-│  ┌─────────────────────────────┐     │
-│  │   api-playground-frontend   │     │
-│  │   nginx:alpine              │     │
-│  │   Port: 8080:80             │     │
-│  └─────────────────────────────┘     │
-│                                      │
-│  ┌─────────────────────────────┐     │
-│  │   api-playground-backend    │     │
-│  │   node:20-alpine            │     │
-│  │   Port: 3001:3001           │     │
-│  └─────────────────────────────┘     │
-└──────────────────────────────────────┘
+┌────────────────────────────────────────────────┐
+│              app-network (bridge)              │
+│                                                │
+│  ┌──────────────────────────────────────────┐  │
+│  │         api-gateway (nginx)              │  │
+│  │         Port: 3000                       │  │
+│  └──────────────────────────────────────────┘  │
+│                                                │
+│  ┌─────────────┐  ┌──────────────────────┐     │
+│  │auth-service │  │ collection-service   │     │
+│  │Port: 3001   │  │ Port: 3002           │     │
+│  └─────────────┘  └──────────────────────┘     │
+│                                                │
+│  ┌─────────────┐  ┌──────────────────────┐     │
+│  │history-     │  │ environment-service  │     │
+│  │service:3003 │  │ Port: 3004           │     │
+│  └─────────────┘  └──────────────────────┘     │
+│                                                │
+│  ┌──────────────────────────────────────────┐  │
+│  │    api-playground-frontend (nginx)       │  │
+│  │    Port: 8080                            │  │
+│  └──────────────────────────────────────────┘  │
+└────────────────────────────────────────────────┘
+```
+
+### API Gateway Routing
+
+```
+/api/auth/*          → auth-service:3001
+/api/collections/*   → collection-service:3002
+/api/requests/*      → collection-service:3002
+/api/history/*       → history-service:3003
+/api/environments/*  → environment-service:3004
 ```
 
 ---
@@ -84,13 +108,15 @@ docker-compose up
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, TypeScript, Tailwind CSS, Zustand, Axios |
-| Backend | Node.js, Express, TypeScript |
+| API Gateway | nginx (reverse proxy + load balancer) |
+| Auth Service | Node.js, Express, TypeScript, JWT, bcryptjs |
+| Collection Service | Node.js, Express, TypeScript, Mongoose |
+| History Service | Node.js, Express, TypeScript, Mongoose |
+| Environment Service | Node.js, Express, TypeScript, Mongoose |
 | Database | MongoDB Atlas |
-| Authentication | JWT (JSON Web Tokens) + bcryptjs |
 | Containerization | Docker + Docker Compose |
 | Frontend Server | nginx (inside Docker) |
-| Frontend Hosting | Render (Docker container) |
-| Backend Hosting | Render (Docker container) |
+| Cloud Deployment | Render (Docker containers) |
 | Version Control | Git + GitHub |
 | CI/CD | GitHub → Render (auto deploy on push) |
 
@@ -100,50 +126,57 @@ docker-compose up
 
 ```
 api-playground/
-├── frontend/                  # React frontend
+├── frontend/                      # React frontend
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── sidebar/       # Sidebar, ShareModal
-│   │   │   ├── request/       # RequestPanel, SaveModal
-│   │   │   ├── response/      # ResponsePanel
-│   │   │   ├── environment/   # EnvironmentManager
+│   │   │   ├── sidebar/           # Sidebar, ShareModal
+│   │   │   ├── request/           # RequestPanel, SaveModal
+│   │   │   ├── response/          # ResponsePanel
+│   │   │   ├── environment/       # EnvironmentManager
 │   │   │   └── Layout.tsx
 │   │   ├── pages/
 │   │   │   ├── LoginPage.tsx
 │   │   │   ├── StatsPage.tsx
 │   │   │   └── ImportPage.tsx
 │   │   ├── store/
-│   │   │   └── requestStore.ts  # Zustand global state
+│   │   │   └── requestStore.ts    # Zustand global state
 │   │   └── api/
-│   │       ├── client.ts        # Axios instance with JWT
-│   │       └── sendRequest.ts   # HTTP request sender
-│   ├── Dockerfile               # Frontend Docker image (nginx)
-│   ├── nginx.conf               # nginx config for React Router
+│   │       ├── client.ts          # Axios with JWT interceptor
+│   │       └── sendRequest.ts     # HTTP request sender
+│   ├── Dockerfile                 # nginx + React build
+│   ├── nginx.conf                 # React Router support
 │   └── package.json
 │
-├── backend/                   # Node.js backend
-│   ├── src/
-│   │   ├── models/
-│   │   │   ├── User.ts
-│   │   │   ├── Request.ts
-│   │   │   ├── Collection.ts
-│   │   │   ├── History.ts
-│   │   │   └── Environment.ts
-│   │   ├── routes/
-│   │   │   ├── auth.ts
-│   │   │   ├── requests.ts
-│   │   │   ├── collections.ts
-│   │   │   ├── history.ts
-│   │   │   └── environments.ts
-│   │   ├── middleware/
-│   │   │   └── auth.ts          # JWT middleware
-│   │   ├── db.ts                # MongoDB connection
-│   │   └── server.ts            # Express app
-│   ├── Dockerfile               # Backend Docker image
-│   └── package.json
+├── services/                      # Microservices
+│   ├── auth-service/              # Login, Register, Token verify
+│   │   ├── src/server.ts
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   │
+│   ├── collection-service/        # Collections + Requests
+│   │   ├── src/server.ts
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   │
+│   ├── history-service/           # History + Stats
+│   │   ├── src/server.ts
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   │
+│   └── environment-service/       # Environment Variables
+│       ├── src/server.ts
+│       ├── Dockerfile
+│       └── package.json
 │
-├── docker-compose.yml         # Run all services locally
-├── .env                       # Local environment variables
+├── api-gateway/                   # nginx API Gateway
+│   ├── nginx.conf                 # Routing rules
+│   └── Dockerfile
+│
+├── backend/                       # Legacy monolithic backend
+│                                  # (kept for reference + cloud deployment)
+│
+├── docker-compose.yml             # Orchestrates all 6 containers
+├── .env                           # Local environment variables
 └── README.md
 ```
 
@@ -155,12 +188,14 @@ api-playground/
 
 - Node.js 20+
 - Git
-- Docker Desktop (for running with Docker)
+- Docker Desktop
 - MongoDB Atlas account (free tier)
 
 ---
 
-## Option A — Run with Docker (Recommended) 🐳
+## Option A — Run with Docker Compose (Recommended) 🐳
+
+This starts all 6 containers — frontend, API gateway, and all 4 microservices.
 
 ### 1. Clone the repository
 
@@ -178,7 +213,7 @@ JWT_SECRET=your_jwt_secret_here
 
 ### 3. Start Docker Desktop
 
-Make sure Docker Desktop is running on your machine.
+Make sure Docker Desktop is running (whale icon in taskbar).
 
 ### 4. Build and run all containers
 
@@ -191,15 +226,28 @@ docker-compose up --build
 | Service | URL |
 |---|---|
 | Frontend | http://localhost:8080 |
-| Backend API | http://localhost:3001 |
-| Health Check | http://localhost:3001/health |
+| API Gateway | http://localhost:3000 |
+| Auth Service | http://localhost:3001 |
+| Collection Service | http://localhost:3002 |
+| History Service | http://localhost:3003 |
+| Environment Service | http://localhost:3004 |
+
+### 6. Test all health checks
+
+```
+http://localhost:3000/health   ← API Gateway
+http://localhost:3001/health   ← Auth Service
+http://localhost:3002/health   ← Collection Service
+http://localhost:3003/health   ← History Service
+http://localhost:3004/health   ← Environment Service
+```
 
 ---
 
 ### Useful Docker Commands
 
 ```bash
-# Run in background (detached mode)
+# Run in background
 docker-compose up --build -d
 
 # See all running containers
@@ -208,17 +256,18 @@ docker ps
 # See all logs
 docker-compose logs -f
 
-# See backend logs only
-docker-compose logs -f backend
-
-# See frontend logs only
-docker-compose logs -f frontend
+# See specific service logs
+docker-compose logs -f auth-service
+docker-compose logs -f collection-service
+docker-compose logs -f history-service
+docker-compose logs -f environment-service
+docker-compose logs -f api-gateway
 
 # Stop all containers
 docker-compose down
 
-# Rebuild a single service
-docker-compose up --build backend
+# Rebuild single service
+docker-compose up --build auth-service
 
 # Remove all containers and volumes
 docker-compose down -v
@@ -228,56 +277,71 @@ docker-compose down -v
 
 ## Option B — Run without Docker
 
-### 1. Clone the repository
+### 1. Start each microservice separately
 
 ```bash
-git clone https://github.com/NehaBhask/api-playground.git
-cd api-playground
-```
-
-### 2. Set up Backend
-
-```bash
-cd backend
+# Terminal 1 - Auth Service
+cd services/auth-service
 npm install
+npm run dev   # runs on port 3001
+
+# Terminal 2 - Collection Service
+cd services/collection-service
+npm install
+npm run dev   # runs on port 3002
+
+# Terminal 3 - History Service
+cd services/history-service
+npm install
+npm run dev   # runs on port 3003
+
+# Terminal 4 - Environment Service
+cd services/environment-service
+npm install
+npm run dev   # runs on port 3004
 ```
 
-Create `backend/.env`:
-```
-PORT=3001
-JWT_SECRET=your_jwt_secret_here
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/apiplayground
-```
-
-Start backend:
-```bash
-npm run dev
-```
-
-Backend runs at: `http://localhost:3001`
-
-### 3. Set up Frontend
+### 2. Start frontend
 
 ```bash
 cd frontend
 npm install
+npm run dev   # runs on port 5173
 ```
 
-Create `frontend/.env`:
-```
-VITE_API_URL=http://localhost:3001
-```
-
-Start frontend:
-```bash
-npm run dev
-```
-
-Frontend runs at: `http://localhost:5173`
+Each service needs its own `.env` file with `MONGODB_URI`, `JWT_SECRET`, and `AUTH_SERVICE_URL`.
 
 ---
 
-## ☁️ Cloud Deployment (Docker Containers on Render)
+## ☁️ Cloud Deployment
+
+### Deployed Architecture
+
+The application is deployed on Render using Docker containers:
+
+```
+GitHub push → Render auto deploys → Docker containers live in cloud
+```
+
+### Deploy Backend → Render (Docker)
+
+1. Go to [render.com](https://render.com) → **New Web Service**
+2. Connect GitHub repo
+3. Set **Root Directory** to `backend`
+4. Set **Environment** to `Docker`
+5. Add environment variables:
+   - `MONGODB_URI` → MongoDB Atlas URI
+   - `JWT_SECRET` → secret key
+   - `PORT` → `3001`
+6. Click **Deploy**
+
+### Deploy Frontend → Render (Docker)
+
+1. Go to [render.com](https://render.com) → **New Web Service**
+2. Connect GitHub repo
+3. Set **Root Directory** to `frontend`
+4. Set **Environment** to `Docker`
+5. Click **Deploy**
 
 ### CI/CD Pipeline
 
@@ -292,25 +356,27 @@ Render       Render
 Docker       Docker
 Container    Container
 (Frontend)   (Backend)
-nginx        Node.js
   ↓            ↓
 Browser      MongoDB
              Atlas
 ```
 
-Every push to `main` automatically rebuilds and redeploys both Docker containers. ✅
+Every push to `main` automatically rebuilds and redeploys. ✅
 
 ---
 
 ## 📊 API Endpoints
 
-### Auth
+All requests go through the **API Gateway at port 3000**.
+
+### Auth Service (`/api/auth`)
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/auth/register` | Create account |
 | POST | `/api/auth/login` | Login |
+| POST | `/api/auth/verify` | Verify JWT token (internal) |
 
-### Collections
+### Collection Service (`/api/collections`, `/api/requests`)
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/collections` | Get all collections |
@@ -320,15 +386,11 @@ Every push to `main` automatically rebuilds and redeploys both Docker containers
 | POST | `/api/collections/:id/unshare` | Disable share link |
 | GET | `/api/collections/shared/:shareId` | Get shared collection (public) |
 | POST | `/api/collections/import/:shareId` | Import shared collection |
-
-### Requests
-| Method | Endpoint | Description |
-|---|---|---|
 | POST | `/api/requests` | Save request |
 | PUT | `/api/requests/:id` | Update request |
 | DELETE | `/api/requests/:id` | Delete request |
 
-### History
+### History Service (`/api/history`)
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/history` | Get request history |
@@ -337,7 +399,7 @@ Every push to `main` automatically rebuilds and redeploys both Docker containers
 | DELETE | `/api/history` | Clear all history |
 | DELETE | `/api/history/:id` | Delete single entry |
 
-### Environments
+### Environment Service (`/api/environments`)
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/environments` | Get all environments |
@@ -351,11 +413,12 @@ Every push to `main` automatically rebuilds and redeploys both Docker containers
 
 - Passwords hashed with **bcryptjs** (salt rounds: 10)
 - Authentication via **JWT tokens** (7 day expiry)
+- Each microservice verifies tokens by calling auth-service `/verify`
 - All private routes protected by auth middleware
 - Each user can only access their own data
-- Shared collections expose only request metadata — no auth tokens stored
+- Shared collections expose only metadata — no auth tokens stored
 - HTTPS enforced on all Render deployments
-- Docker containers run as non-root where possible
+- Docker containers use lightweight alpine images
 
 ---
 
@@ -363,24 +426,27 @@ Every push to `main` automatically rebuilds and redeploys both Docker containers
 
 | Concept | Implementation |
 |---|---|
-| Containerization | Docker packages frontend and backend into isolated containers |
-| Container Orchestration | Docker Compose runs and networks all services together |
-| Infrastructure as Code | Dockerfile defines reproducible environments |
-| Database as a Service | MongoDB Atlas (fully managed cloud DB) |
-| Platform as a Service | Render hosts Docker containers without server management |
-| Reverse Proxy | nginx serves React app and handles routing inside container |
-| Continuous Deployment | GitHub push triggers automatic redeploy on Render |
-| Cloud Storage | All user data stored in MongoDB Atlas cloud |
-| Multi-tenant SaaS | Multiple users with fully isolated data |
-| REST API | Stateless HTTP API with full CRUD |
-| Environment Config | Cloud env variables for secrets — never hardcoded |
-| Container Networking | Docker bridge network connects frontend and backend |
+| **Microservices Architecture** | 4 independent services (auth, collection, history, environment) |
+| **API Gateway Pattern** | nginx routes all requests to correct microservice |
+| **Service-to-Service Communication** | Services call auth-service to verify tokens |
+| **Containerization** | Each service runs in its own Docker container |
+| **Container Orchestration** | Docker Compose manages all 6 containers |
+| **Infrastructure as Code** | Dockerfiles define reproducible environments |
+| **Database as a Service** | MongoDB Atlas (fully managed cloud DB) |
+| **Platform as a Service** | Render hosts containers without server management |
+| **Continuous Deployment** | GitHub push triggers automatic redeploy |
+| **Cloud Storage** | All user data stored in MongoDB Atlas |
+| **Multi-tenant SaaS** | Multiple users with fully isolated data |
+| **REST API** | Stateless HTTP API with full CRUD |
+| **Reverse Proxy** | nginx API Gateway proxies to backend services |
+| **Container Networking** | Docker bridge network connects all services |
+| **Environment Config** | Cloud env variables — secrets never hardcoded |
 
 ---
 
 ## 👤 Author
 
-Built as a cloud computing project demonstrating end-to-end cloud application development with Docker containerization, CI/CD, and cloud deployment.
+Built as a cloud computing project demonstrating end-to-end cloud application development with microservices architecture, Docker containerization, and CI/CD pipeline.
 
 ---
 
