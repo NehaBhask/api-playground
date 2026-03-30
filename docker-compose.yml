@@ -1,31 +1,92 @@
 services:
-  backend:
+  # API Gateway
+  api-gateway:
     build:
-      context: ./backend
+      context: ./api-gateway
       dockerfile: Dockerfile
-    container_name: api-playground-backend
+    container_name: api-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - collection-service
+      - history-service
+      - environment-service
+    networks:
+      - app-network
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
     ports:
       - "3001:3001"
     environment:
       - PORT=3001
       - MONGODB_URI=${MONGODB_URI}
       - JWT_SECRET=${JWT_SECRET}
-    restart: unless-stopped
     networks:
       - app-network
 
+  # Collection Service
+  collection-service:
+    build:
+      context: ./services/collection-service
+      dockerfile: Dockerfile
+    container_name: collection-service
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - MONGODB_URI=${MONGODB_URI}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+    networks:
+      - app-network
+
+  # History Service
+  history-service:
+    build:
+      context: ./services/history-service
+      dockerfile: Dockerfile
+    container_name: history-service
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - MONGODB_URI=${MONGODB_URI}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+    networks:
+      - app-network
+
+  # Environment Service
+  environment-service:
+    build:
+      context: ./services/environment-service
+      dockerfile: Dockerfile
+    container_name: environment-service
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+      - MONGODB_URI=${MONGODB_URI}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+    networks:
+      - app-network
+
+  # Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=http://localhost:3001
+        - VITE_API_URL=http://localhost:3000
     container_name: api-playground-frontend
     ports:
       - "8080:80"
     depends_on:
-      - backend
-    restart: unless-stopped
+      - api-gateway
     networks:
       - app-network
 
